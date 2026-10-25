@@ -1,0 +1,316 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark h-full bg-[#0b0f19] text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deriv Algorithmic Trading Terminal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#0b0f19',
+                            card: '#111827',
+                            border: '#1f293d',
+                            green: '#00ff87',
+                            greenDark: '#059669',
+                            red: '#ff0055',
+                            redDark: '#dc2626',
+                            cyan: '#00f0ff',
+                            amber: '#ffb700',
+                            purple: '#a855f7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Terminal look */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f293d;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+        
+        .glow-green {
+            box-shadow: 0 0 12px rgba(0, 255, 135, 0.35);
+        }
+        .glow-red {
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.35);
+        }
+        .text-glow-green {
+            text-shadow: 0 0 8px rgba(0, 255, 135, 0.5);
+        }
+        .text-glow-red {
+            text-shadow: 0 0 8px rgba(255, 0, 85, 0.5);
+        }
+        
+        @keyframes digitPop {
+            0% { transform: scale(1.25); opacity: 0.6; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .digit-pop {
+            animation: digitPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased bg-brand-bg text-slate-200 flex flex-col overflow-x-hidden">
+
+    <!-- Header / Navbar -->
+    <header class="bg-[#0f172a] border-b border-brand-border px-4 py-2.5 shrink-0 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-lg text-brand-green">
+                <i class="fa-solid fa-terminal text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-extrabold text-white tracking-wider flex items-center gap-2 font-mono">
+                    DERIV<span class="text-brand-green">ALGO</span><span class="text-[10px] font-normal px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">PRO v3.0</span>
+                </h1>
+                <p class="text-[11px] text-slate-400">Consecutive Digits &amp; Martingale Bot Engine</p>
+            </div>
+        </div>
+
+        <!-- Header Actions & Account Overview -->
+        <div class="flex items-center flex-wrap gap-2.5">
+            
+            <!-- Sound Audio Toggle -->
+            <button id="soundToggleBtn" onclick="toggleAudio()" title="Toggle Sound Effects" class="p-2 rounded-lg bg-slate-900 border border-brand-border text-slate-400 hover:text-white transition">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-xs"></i>
+            </button>
+
+            <!-- Mode Switch (Simulation vs Live WebSocket) -->
+            <button id="simModeBtn" onclick="toggleSimMode()" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border bg-amber-500/10 border-amber-500/40 text-amber-400 hover:bg-amber-500/20">
+                <i class="fa-solid fa-flask"></i>
+                <span id="simModeText">Simulation Mode: ON</span>
+            </button>
+
+            <!-- WebSocket Connection Status Badge -->
+            <div id="wsStatusBadge" class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono font-medium">
+                <span class="relative flex h-2 w-2">
+                    <span id="wsStatusPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span id="wsStatusDot" class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span id="wsStatusText" class="uppercase">SIMULATION</span>
+            </div>
+
+            <!-- Account Summary Box -->
+            <div id="accountCard" class="flex items-center gap-3 bg-slate-900 border border-brand-border px-3 py-1 rounded-lg">
+                <div class="text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <span id="accountTypeBadge" class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">DEMO</span>
+                        <span id="accountIdText" class="text-xs font-mono text-slate-400">VRTC1000202</span>
+                    </div>
+                    <div id="balanceDisplay" class="text-sm font-bold font-mono text-brand-green">$10,000.00 <span class="text-xs font-normal text-slate-400">USD</span></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="flex-1 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3.5 overflow-y-auto">
+
+        <!-- ================= LEFT COLUMN: CONNECTION & STRATEGY CONTROL ================= -->
+        <section class="lg:col-span-3 flex flex-col gap-3.5">
+            
+            <!-- Connection Setup Box -->
+            <div class="bg-brand-card border border-brand-border rounded-xl p-3.5 shadow-lg">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                    <span><i class="fa-solid fa-plug text-brand-green mr-1.5"></i> API Authorization</span>
+                    <i class="fa-solid fa-shield-halved text-slate-600"></i>
+                </h2>
+                <div class="space-y-2.5">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-1">
+                            <label class="block text-[10px] text-slate-400 mb-1 font-mono">App ID</label>
+                            <input id="appIdInput" type="text" value="1089" class="w-full bg-[#0b0f19] border border-brand-border rounded-lg py-1.5 px-2 text-xs font-mono text-center text-slate-200 focus:outline-none focus:border-brand-green">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[10px] text-slate-400 mb-1 font-mono">API Token</label>
+                            <div class="relative">
+                                <input id="apiTokenInput" type="password" placeholder="Deriv API Token..." class="w-full bg-[#0b0f19] border border-brand-border rounded-lg py-1.5 px-2.5 pr-8 text-xs font-mono text-slate-200 focus:outline-none focus:border-brand-green">
+                                <button onclick="toggleTokenVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                                    <i id="tokenEyeIcon" class="fa-solid fa-eye text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-0.5">
+                        <button id="authBtn" onclick="authorizeAccount()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-2 px-3 rounded-lg transition flex items-center justify-center gap-1.5 shadow">
+                            <i class="fa-solid fa-right-to-bracket"></i> Connect & Authorize
+                        </button>
+                        <button id="disconnectBtn" onclick="disconnectWS()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs py-2 px-2.5 rounded-lg transition border border-slate-700">
+                            <i class="fa-solid fa-power-off"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Strategy Parameters Card -->
+            <div class="bg-brand-card border border-brand-border rounded-xl p-3.5 shadow-lg flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3 border-b border-brand-border pb-2">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-sliders text-brand-green mr-1.5"></i> Bot Strategy Parameters
+                        </h2>
+                        <span id="botStatusPill" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">IDLE</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <!-- Strategy Concept Banner -->
+                        <div class="p-2.5 rounded-lg bg-[#0b0f19] border border-brand-border text-xs">
+                            <div class="text-slate-400 text-[10px] mb-1 font-semibold flex items-center justify-between">
+                                <span>Logic: Consecutive Streak Reversal</span>
+                                <span class="text-brand-green font-mono">1-Tick</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 leading-tight">
+                                Buys <span class="text-brand-cyan font-mono">DIGITEVEN</span> after <b class="text-slate-300">N Odd</b> digits. Buys <span class="text-brand-amber font-mono">DIGITODD</span> after <b class="text-slate-300">N Even</b> digits.
+                            </p>
+                        </div>
+
+                        <!-- Base Stake & Duration -->
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Base Stake ($)</label>
+                                <input id="paramBaseStake" type="number" step="0.5" value="1.00" class="w-full bg-[#0b0f19] border border-brand-border rounded-lg py-1.5 px-2.5 text-xs font-mono text-brand-green focus:outline-none focus:border-brand-green">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-400 mb-1">Duration</label>
+                                <input type="text" value="1 Tick" disabled class="w-full bg-[#0b0f19]/60 border border-brand-border/60 rounded-lg py-1.5 px-2.5 text-xs font-mono text-slate-500 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <!-- Streak N Selector with Quick Presets -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-[10px] text-slate-400">Consecutive Ticks Count (N)</label>
+                                <span id="streakNLabel" class="text-xs font-mono font-bold text-slate-200">3 Ticks</span>
+                            </div>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                <button onclick="setStreakN(2)" class="preset-n-btn bg-slate-800 hover:bg-slate-700 py-1 rounded text-xs font-mono border border-slate-700 transition">N=2</button>
+                                <button onclick="setStreakN(3)" class="preset-n-btn bg-brand-green/20 border-brand-green/50 text-brand-green py-1 rounded text-xs font-mono border transition">N=3</button>
+                                <button onclick="setStreakN(4)" class="preset-n-btn bg-slate-800 hover:bg-slate-700 py-1 rounded text-xs font-mono border border-slate-700 transition">N=4</button>
+                                <button onclick="setStreakN(5)" class="preset-n-btn bg-slate-800 hover:bg-slate-700 py-1 rounded text-xs font-mono border border-slate-700 transition">N=5</button>
+                            </div>
+                            <input id="paramStreakN" type="hidden" value="3">
+                        </div>
+
+                        <!-- Martingale Multiplier -->
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Martingale Multiplier (Loss Factor)</label>
+                            <input id="paramMartingale" type="number" step="0.1" min="1.0" value="2.0" class="w-full bg-[#0b0f19] border border-brand-border rounded-lg py-1.5 px-2.5 text-xs font-mono text-brand-amber focus:outline-none focus:border-brand-green">
+                        </div>
+
+                        <!-- Risk Parameters: Take Profit & Stop Loss -->
+                        <div class="grid grid-cols-2 gap-2.5 pt-0.5">
+                            <div>
+                                <label class="block text-[10px] text-brand-green mb-1">Take Profit ($)</label>
+                                <input id="paramTakeProfit" type="number" step="1" value="10.00" class="w-full bg-[#0b0f19] border border-emerald-950 rounded-lg py-1.5 px-2.5 text-xs font-mono text-brand-green focus:outline-none focus:border-brand-green">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-brand-red mb-1">Stop Loss ($)</label>
+                                <input id="paramStopLoss" type="number" step="1" value="20.00" class="w-full bg-[#0b0f19] border border-red-950 rounded-lg py-1.5 px-2.5 text-xs font-mono text-brand-red focus:outline-none focus:border-brand-red">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Controls & Active State Indicator -->
+                <div class="pt-4 space-y-2">
+                    <button id="startBotBtn" onclick="toggleBotExecution()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play text-xs"></i>
+                        <span id="startBotBtnText">START AUTOMATED BOT</span>
+                    </button>
+                    <div class="text-center text-[10px] text-slate-500 font-mono">
+                        Active Trade Guard: <span id="tradeLockStatus" class="text-slate-400">UNLOCKED</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ================= MIDDLE COLUMN: LIVE ANALYTICS & DIGIT DISTRIBUTION ================= -->
+        <section class="lg:col-span-5 flex flex-col gap-3.5">
+            
+            <!-- Market Selection & Live Tick Banner -->
+            <div class="bg-brand-card border border-brand-border rounded-xl p-3.5 shadow-lg">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div class="flex-1 min-w-[180px]">
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Synthetic Volatility Market</label>
+                        <select id="marketSelect" onchange="changeMarket()" class="w-full bg-[#0b0f19] border border-brand-border rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-200 focus:outline-none focus:border-brand-green">
+                            <option value="1HZ10V" selected>Volatility 10 (1s) Index</option>
+                            <option value="R_10">Volatility 10 Index</option>
+                            <option value="1HZ25V">Volatility 25 (1s) Index</option>
+                            <option value="R_25">Volatility 25 Index</option>
+                            <option value="R_50">Volatility 50 Index</option>
+                            <option value="1HZ75V">Volatility 75 (1s) Index</option>
+                            <option value="R_75">Volatility 75 Index</option>
+                            <option value="1HZ100V">Volatility 100 (1s) Index</option>
+                            <option value="R_100">Volatility 100 Index</option>
+                        </select>
+                    </div>
+
+                    <!-- Market Streak Badge -->
+                    <div class="text-right bg-[#0b0f19] border border-brand-border px-3 py-1.5 rounded-lg">
+                        <div class="text-[9px] text-slate-400 uppercase font-bold">Current Streak</div>
+                        <div id="currentStreakDisplay" class="text-xs font-mono font-bold text-slate-300">0 Consecutive</div>
+                    </div>
+                </div>
+
+                <!-- Big Tick Display Card -->
+                <div class="bg-[#0b0f19] border border-brand-border rounded-xl p-3.5 flex items-center justify-between relative overflow-hidden">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-0.5 flex items-center gap-2">
+                            <span id="symbolLabel" class="font-bold text-slate-200">1HZ10V</span>
+                            <span id="tickTimeLabel" class="text-[10px] font-mono text-slate-500">--:--:--</span>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <span id="livePriceDisplay" class="text-2xl sm:text-3xl font-extrabold font-mono text-white tracking-tight">0000.00</span>
+                            <span id="priceDirectionIcon" class="text-base text-slate-600"><i class="fa-solid fa-minus"></i></span>
+                        </div>
+                    </div>
+
+                    <!-- Highlighted Last Digit Display Box -->
+                    <div class="text-center bg-brand-card border border-brand-border px-4 py-2 rounded-lg min-w-[80px]">
+                        <div class="text-[9px] uppercase font-bold text-slate-400 mb-0.5">Last Digit</div>
+                        <div id="lastDigitDisplay" class="text-3xl font-black font-mono text-brand-green digit-pop">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Digit Frequency Statistics (100 Tick Moving Window) -->
+            <div class="bg-brand-card border border-brand-border rounded-xl p-3.5 shadow-lg flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-chart-bar text-brand-green mr-1.5"></i> Digit Stats (Last 100 Ticks)
+                        </h2>
+                        <span class="text-[10px] font-mono text-slate-500" id="tickCountTotal">Ticks Window: 0/100</span>
+                    </div>
+
+                    <!-- Odd vs Even Ratio Bar -->
+      
